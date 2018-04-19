@@ -6,7 +6,7 @@ import os
 
 FILE_EXTENSION = ".gct"
 
-def Harvest(panorama_request, bucket, key):
+def harvest(panorama_request, bucket, key):
     print "inside Harvest"
     s3 = boto3.client('s3')
     panorama_url = panorama_request["level 2"]["panorama"]["url"]
@@ -22,17 +22,17 @@ def Harvest(panorama_request, bucket, key):
             print "failed to upload to S3: " + error
             level_2_message = "s3 upload error: {}".format(error)
             payload = {"s3": {"message": level_2_message}}
-            post_update_to_macchiato(id, payload)
+            post_update_to_proteomics_clue(id, payload)
 
     except Exception as error:
         print error
         level_2_message = "error: {}".format(error)
         payload = {"s3": {"message": level_2_message}}
-        post_update_to_macchiato(id, payload)
+        post_update_to_proteomics_clue(id, payload)
 
     s3_url = "s3://" + bucket + "/" + s3key
     success_payload = {"s3": {"url": s3_url}}
-    post_update_to_macchiato(id, success_payload)
+    post_update_to_proteomics_clue(id, success_payload)
 
 def extract_data_from_panorama_request(panorama_request, key):
     plate_name = panorama_request["name"]
@@ -41,13 +41,13 @@ def extract_data_from_panorama_request(panorama_request, key):
     request_id = panorama_request["id"]
     return (request_id, new_key)
 
-def post_update_to_macchiato(id, payload):
+def post_update_to_proteomics_clue(id, payload):
     API_key = os.environ["API_KEY"]
     API_URL = os.environ["API_URL"] + "/" + id + "/level2"
 
     headers = {'user_key': API_key}
 
-    r = requests.put(API_URL, data=json.dumps(payload), headers=headers)
+    r = requests.put(API_URL,json=payload,headers=headers)
     print r.json()
     if r.ok:
         print "successfully updated API at: {}".format(API_URL)
@@ -65,4 +65,4 @@ def handler(event, context):
     file_content = panorama_request.get()['Body'].read()
     json_content = json.loads(file_content)
     print json_content
-    Harvest(json_content, bucket_name, file_key)
+    harvest(json_content, bucket_name, file_key)
