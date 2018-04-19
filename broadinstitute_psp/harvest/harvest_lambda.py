@@ -35,10 +35,12 @@ def harvest(panorama_request, bucket, key):
     post_update_to_proteomics_clue(id, success_payload)
 
 def extract_data_from_panorama_request(panorama_request, key):
-    plate_name = panorama_request["name"]
-    filename = plate_name + FILE_EXTENSION
+    plate_name = panorama_request.name
+    timestamp = panorama_request.timestamp
+
+    filename = plate_name + "_LVL2_" + timestamp + FILE_EXTENSION
     new_key = key.rsplit("/", 1)[0] + "/" + filename
-    request_id = panorama_request["id"]
+    request_id = panorama_request.id
     return (request_id, new_key)
 
 def post_update_to_proteomics_clue(id, payload):
@@ -66,3 +68,5 @@ def handler(event, context):
     json_content = json.loads(file_content)
     print json_content
     harvest(json_content, bucket_name, file_key)
+
+https://panoramaweb.org/labkey/_webdav/LINCS/GCP/@files/GCT/LINCS_GCP_Plate58_annotated_minimized_2018-01-02_14-26-56.gct
