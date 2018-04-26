@@ -50,7 +50,7 @@ def call_dry(args):
         print level_3_gct
 
         try:
-            gct_location = args.config_dir + "/" + LEVEL_3_GCT
+            gct_location = args.config_dir + "/" + LEVEL_3_GCT_NAME
             gct = open(gct_location, 'rb')
             s3.Bucket(args.bucket_name).put_object(Key=level_3_key, Body=gct)
 
