@@ -8,7 +8,7 @@ import broadinstitute_psp.dry.dry as dry
 
 
 FILE_EXTENSION = ".gct"
-LEVEL_3_GCT = "level3.gct"
+LEVEL_3_GCT_NAME = "level3.gct"
 
 def build_parser():
     parser = argparse.ArgumentParser(
@@ -19,7 +19,7 @@ def build_parser():
                         help="s3 bucket where level 2 GCT is located")
     # Required arg
     parser.add_argument("--file_key", "-key", required=True,
-                        help="s3 filekey to level 2 GCT")
+                        help="s3 key to level 2 GCT file")
     # Required arg
     parser.add_argument("--config_dir", "-dir", required=True,
                         help="directory when psp_production config is located")
@@ -43,7 +43,7 @@ def call_dry(args):
 
     download_gct_from_s3(s3, args, local_gct_path)
 
-    dry_args = dry.build_parser().parse_args(["-i", local_gct_path, "-p", config_path, "-o", args.config_dir, "-og", LEVEL_3_GCT])
+    dry_args = dry.build_parser().parse_args(["-i", local_gct_path, "-p", config_path, "-o", args.config_dir, "-og", LEVEL_3_GCT_NAME])
     level_3_key = create_level_3_key(args)
     try:
         level_3_gct = dry.main(dry_args)
