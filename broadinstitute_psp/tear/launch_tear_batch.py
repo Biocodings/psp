@@ -18,10 +18,10 @@ def send_to_Batch(bucket_name, file_key, request_id, plate_name, plate_timestamp
         jobName=job,
         jobQueue='Macchiato-misc',
         dependsOn=[],
-        jobDefinition='psp-dry',
+        jobDefinition='psp-tear',
         containerOverrides={
             'command': [
-                '/cmap/bin/dry', '--bucket_name', bucket_name, '--file_key', file_key,
+                '/cmap/bin/tear', '--bucket_name', bucket_name, '--file_key', file_key,
                 '--config_dir', 'broadinstitute_psp', '--plate_api_id', request_id,
                 '--plate_name', plate_name, '--plate_timestamp', plate_timestamp
             ],
@@ -39,18 +39,17 @@ def send_to_Batch(bucket_name, file_key, request_id, plate_name, plate_timestamp
         retryStrategy={
             'attempts': 1
         })
-    print "job name: {} job id: {}".format(res['jobName'], res['jobId'])
+    print "jobName: {} jobId: {}".format(res['jobName'], res['jobId'])
 
 
 def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
-    s3_dir = current_gct_key.rsplit("/", 1)[0]
+    s3_dir = current_gct_key.rsplit("/", 2)[0] + "/level2"
     gct_file_name = current_gct_key.rsplit("/", 1)[1]
 
     plate_name = gct_file_name.rsplit("_", 3)[0]
     plate_timestamp = gct_file_name.split(".")[0].split("_", 4)[4]
 
-    panorama_filename = plate_name + "_" + plate_timestamp + ".json"
-    panorama_file_key = s3_dir + "/" + panorama_filename
+    panorama_file_key = s3_dir + "/" + plate_name + "_" + plate_timestamp + ".json"
     s3obj = s3.Object(bucket_name, panorama_file_key)
     panorama_file_content = s3obj.get()['Body'].read()
     panorama_json = json.loads(panorama_file_content)
