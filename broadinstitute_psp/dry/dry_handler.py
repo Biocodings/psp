@@ -9,6 +9,7 @@ import broadinstitute_psp.dry.dry as dry
 
 FILE_EXTENSION = ".gct"
 LEVEL_3_GCT_NAME = "level3.gct"
+LEVEL_3_SUFFIX = "/level3"
 
 def build_parser():
     parser = argparse.ArgumentParser(
@@ -58,19 +59,22 @@ def call_dry(args):
             level_3_message = "s3 upload error: {}".format(error)
             print level_3_message
             payload = {"s3": {"message": level_3_message}}
-            post_update_to_proteomics_clue(args.plate_api_id, payload)
+            post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
             raise Exception(error)
 
     except Exception as error:
         level_3_message = error
         print level_3_message
         payload = {"s3": {"message": level_3_message}}
-        post_update_to_proteomics_clue(args.plate_api_id, payload)
+        post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
         raise Exception(error)
 
     s3_url = "s3://" + args.bucket_name + "/" + level_3_key
     success_payload = {"s3": {"url": s3_url}}
-    post_update_to_proteomics_clue(args.plate_api_id, success_payload)
+    post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, success_payload)
+
+    dry_success_payload = {"status": "created LVL 3 GCT"}
+    post_update_to_proteomics_clue("", args.plate_api_id, dry_success_payload)
 
 def download_gct_from_s3(s3, args, local_level_2_path):
     try:
@@ -88,7 +92,7 @@ def download_gct_from_s3(s3, args, local_level_2_path):
             print level_3_message
 
         payload = {"s3": {"message": level_3_message}}
-        post_update_to_proteomics_clue(args.plate_api_id, payload)
+        post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
         raise Exception(e)
 
 def create_level_3_key(args):
@@ -98,9 +102,9 @@ def create_level_3_key(args):
 
     return level_3_key
 
-def post_update_to_proteomics_clue(id, payload):
+def post_update_to_proteomics_clue(url_suffix, id, payload):
     API_key = os.environ["API_KEY"]
-    API_URL = os.environ["API_URL"] + "/" + id + "/level3"
+    API_URL = os.environ["API_URL"] + "/" + id + url_suffix
 
     headers = {'user_key': API_key}
 

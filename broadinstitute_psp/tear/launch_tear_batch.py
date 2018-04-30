@@ -10,6 +10,23 @@ def lambda_handler(event, context):
     (request_id, plate_name, plate_timestamp) = get_panorama_request_and_parse(s3, bucket_name, file_key)
     send_to_Batch(bucket_name, file_key, request_id, plate_name, plate_timestamp)
 
+def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
+    #EXPECTS current_gct_key to look like : "s3://BUCKET/FILE_KEY
+    #FILE_KEY is DIR/DIR/FILE_NAME
+    s3_dir = current_gct_key.rsplit("/", 2)[0] + "/level2"
+    gct_file_name = current_gct_key.rsplit("/", 1)[1]
+
+    plate_name = gct_file_name.rsplit("_", 3)[0]
+    plate_timestamp = gct_file_name.split(".")[0].split("_", 4)[4]
+
+    panorama_file_key = s3_dir + "/" + plate_name + "_" + plate_timestamp + ".json"
+    s3obj = s3.Object(bucket_name, panorama_file_key)
+    panorama_file_content = s3obj.get()['Body'].read()
+    panorama_json = json.loads(panorama_file_content)
+
+    request_id = panorama_json["id"]
+
+    return (request_id, plate_name, plate_timestamp)
 
 def send_to_Batch(bucket_name, file_key, request_id, plate_name, plate_timestamp):
     client = boto3.client('batch')
@@ -40,20 +57,3 @@ def send_to_Batch(bucket_name, file_key, request_id, plate_name, plate_timestamp
             'attempts': 1
         })
     print "jobName: {} jobId: {}".format(res['jobName'], res['jobId'])
-
-
-def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
-    s3_dir = current_gct_key.rsplit("/", 2)[0] + "/level2"
-    gct_file_name = current_gct_key.rsplit("/", 1)[1]
-
-    plate_name = gct_file_name.rsplit("_", 3)[0]
-    plate_timestamp = gct_file_name.split(".")[0].split("_", 4)[4]
-
-    panorama_file_key = s3_dir + "/" + plate_name + "_" + plate_timestamp + ".json"
-    s3obj = s3.Object(bucket_name, panorama_file_key)
-    panorama_file_content = s3obj.get()['Body'].read()
-    panorama_json = json.loads(panorama_file_content)
-
-    request_id = panorama_json["id"]
-
-    return (request_id, plate_name, plate_timestamp)

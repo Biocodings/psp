@@ -8,7 +8,7 @@ import broadinstitute_psp.tear.tear as tear
 
 FILE_EXTENSION = ".gct"
 LEVEL_4_GCT_NAME = "level4.gct"
-
+LEVEL_4_SUFFIX = "/level4"
 
 def build_parser():
     parser = argparse.ArgumentParser(
@@ -58,19 +58,22 @@ def call_tear(args):
             level_4_message = "s3 upload error: {}".format(error)
             print level_4_message
             payload = {"s3": {"message": level_4_message}}
-            post_update_to_proteomics_clue(args.plate_api_id, payload)
+            post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
             raise Exception(error)
 
     except Exception as error:
         level_4_message = error
         print level_4_message
         payload = {"s3": {"message": level_4_message}}
-        post_update_to_proteomics_clue(args.plate_api_id, payload)
+        post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
         raise Exception(error)
 
     s3_url = "s3://" + args.bucket_name + "/" + level_4_key
     success_payload = {"s3": {"url": s3_url}}
-    post_update_to_proteomics_clue(args.plate_api_id, success_payload)
+    post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, success_payload)
+
+    tear_success_payload = {"status": "created level 4 GCT"}
+    post_update_to_proteomics_clue("", args.plate_api_id, tear_success_payload)
 
 def download_gct_from_s3(s3, args, local_level_3_path):
     try:
@@ -88,7 +91,7 @@ def download_gct_from_s3(s3, args, local_level_3_path):
             print level_4_message
 
         payload = {"s3": {"message": level_4_message}}
-        post_update_to_proteomics_clue(args.plate_api_id, payload)
+        post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
         raise Exception(e)
 
 def create_level_4_key(args):
@@ -98,9 +101,9 @@ def create_level_4_key(args):
 
     return level_4_key
 
-def post_update_to_proteomics_clue(id, payload):
+def post_update_to_proteomics_clue(url_suffix, id, payload):
     API_key = os.environ["API_KEY"]
-    API_URL = os.environ["API_URL"] + "/" + id + "/level4"
+    API_URL = os.environ["API_URL"] + "/" + id + url_suffix
 
     headers = {'user_key': API_key}
 
