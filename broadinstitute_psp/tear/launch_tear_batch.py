@@ -11,8 +11,8 @@ def lambda_handler(event, context):
     send_to_Batch(bucket_name, file_key, request_id, plate_name, plate_timestamp)
 
 def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
-    #EXPECTS current_gct_key to look like : "s3://BUCKET/FILE_KEY
-    #FILE_KEY is DIR/DIR/FILE_NAME
+    #EXPECTS current_gct_key to look like : "s3://BUCKET/FILE_KEY"
+    #FILE_KEY is psp/levelX/FILE_NAME
     s3_dir = current_gct_key.rsplit("/", 2)[0] + "/level2"
     gct_file_name = current_gct_key.rsplit("/", 1)[1]
 

@@ -1,9 +1,8 @@
 import boto3
 import botocore
 import argparse
-import os
 import sys
-import requests
+import broadinstitute_psp.utils.lambda_utils as utils
 import broadinstitute_psp.dry.dry as dry
 
 
@@ -16,7 +15,7 @@ def build_parser():
         description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # Required arg
-    parser.add_argument("--bucket_name", "-b", required=True,
+    parser.add_argument("--bucket_name", "-b", rpost_update_to_proteomics_clueequired=True,
                         help="s3 bucket where level 2 GCT is located")
     # Required arg
     parser.add_argument("--file_key", "-key", required=True,
@@ -59,22 +58,22 @@ def call_dry(args):
             level_3_message = "s3 upload error: {}".format(error)
             print level_3_message
             payload = {"s3": {"message": level_3_message}}
-            post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
+            utils.post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
             raise Exception(error)
 
     except Exception as error:
         level_3_message = error
         print level_3_message
         payload = {"s3": {"message": level_3_message}}
-        post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
+        utils.post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
         raise Exception(error)
 
     s3_url = "s3://" + args.bucket_name + "/" + level_3_key
     success_payload = {"s3": {"url": s3_url}}
-    post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, success_payload)
+    utils.post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, success_payload)
 
     dry_success_payload = {"status": "created LVL 3 GCT"}
-    post_update_to_proteomics_clue("", args.plate_api_id, dry_success_payload)
+    utils.post_update_to_proteomics_clue("", args.plate_api_id, dry_success_payload)
 
 def download_gct_from_s3(s3, args, local_level_2_path):
     try:
@@ -92,7 +91,7 @@ def download_gct_from_s3(s3, args, local_level_2_path):
             print level_3_message
 
         payload = {"s3": {"message": level_3_message}}
-        post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
+        utils.post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
         raise Exception(e)
 
 def create_level_3_key(args):
@@ -101,20 +100,6 @@ def create_level_3_key(args):
     level_3_key = args.file_key.rsplit("/", 2)[0] + "/level3/" + filename
 
     return level_3_key
-
-def post_update_to_proteomics_clue(url_suffix, id, payload):
-    API_key = os.environ["API_KEY"]
-    API_URL = os.environ["API_URL"] + "/" + id + url_suffix
-
-    headers = {'user_key': API_key}
-
-    r = requests.put(API_URL,json=payload,headers=headers)
-    print r.text
-
-    if r.ok:
-        print "successfully updated API at: {} with message: {}".format(API_URL, payload)
-    else:
-        print "failed to update API at: {} with response: {}".format(API_URL, r.text)
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])

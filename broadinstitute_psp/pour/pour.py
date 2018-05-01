@@ -9,7 +9,7 @@ BASE_API_URL = os.environ["API_URL"]
 
 
 def handler(event, context):
-    print "inside lambda handler"
+    print "inside lambda_utils.py handler"
     s3 = boto3.resource('s3')
     bucket_name = event['Records'][0]['s3']['bucket']['name']
     file_key = event['Records'][0]['s3']['object']['key']
@@ -110,7 +110,7 @@ def download_gct_from_s3(s3, bucket_name, file_key, request_id):
 
     return open_file
 
-
+#copy of broadinstitute_psp.utils.lambda_utils.post_update_to_proteomics_clue for use in lambda
 def post_update_to_proteomics_clue(id, payload):
     api_url = BASE_API_URL + "/" + id
 

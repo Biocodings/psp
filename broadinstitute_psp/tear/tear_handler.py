@@ -1,9 +1,8 @@
-import os
 import sys
 import argparse
 import boto3
 import botocore
-import requests
+import broadinstitute_psp.utils.lambda_utils as utils
 import broadinstitute_psp.tear.tear as tear
 
 FILE_EXTENSION = ".gct"
@@ -58,22 +57,22 @@ def call_tear(args):
             level_4_message = "s3 upload error: {}".format(error)
             print level_4_message
             payload = {"s3": {"message": level_4_message}}
-            post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
+            utils.post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
             raise Exception(error)
 
     except Exception as error:
         level_4_message = error
         print level_4_message
         payload = {"s3": {"message": level_4_message}}
-        post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
+        utils.post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
         raise Exception(error)
 
     s3_url = "s3://" + args.bucket_name + "/" + level_4_key
     success_payload = {"s3": {"url": s3_url}}
-    post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, success_payload)
+    utils.post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, success_payload)
 
     tear_success_payload = {"status": "created level 4 GCT"}
-    post_update_to_proteomics_clue("", args.plate_api_id, tear_success_payload)
+    utils.post_update_to_proteomics_clue("", args.plate_api_id, tear_success_payload)
 
 def download_gct_from_s3(s3, args, local_level_3_path):
     try:
@@ -83,15 +82,15 @@ def download_gct_from_s3(s3, args, local_level_3_path):
     except botocore.exceptions.ClientError as e:
 
         if e.response['Error']['Code'] == "404":
-            level_4_message = "The LVL2 GCT located at {} from bucket {} does not exist".format(args.file_key, args.bucket_name)
+            level_4_message = "The LVL3 GCT located at {} from bucket {} does not exist".format(args.file_key, args.bucket_name)
             print level_4_message
 
         else:
-            level_4_message = "failed to download LVL2 GCT located at {} from bucket {}".format(args.file_key, args.bucket_name)
+            level_4_message = "failed to download LVL3 GCT located at {} from bucket {}".format(args.file_key, args.bucket_name)
             print level_4_message
 
         payload = {"s3": {"message": level_4_message}}
-        post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
+        utils.post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
         raise Exception(e)
 
 def create_level_4_key(args):
@@ -101,19 +100,6 @@ def create_level_4_key(args):
 
     return level_4_key
 
-def post_update_to_proteomics_clue(url_suffix, id, payload):
-    API_key = os.environ["API_KEY"]
-    API_URL = os.environ["API_URL"] + "/" + id + url_suffix
-
-    headers = {'user_key': API_key}
-
-    r = requests.put(API_URL,json=payload,headers=headers)
-    print r.text
-
-    if r.ok:
-        print "successfully updated API at: {} with message: {}".format(API_URL, payload)
-    else:
-        print "failed to update API at: {} with response: {}".format(API_URL, r.text)
 
 if __name__ == "__main__":
     args = build_parser().parse_args(sys.argv[1:])

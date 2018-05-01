@@ -42,10 +42,13 @@ def extract_data_from_panorama_request(panorama_request, key):
     timestamp = panorama_request["timestamp"]
 
     filename = plate_name + "_LVL2_" + timestamp + FILE_EXTENSION
+    #new key keeps directory location
     new_key = key.rsplit("/", 1)[0] + "/" + filename
     request_id = panorama_request["id"]
     return (request_id, new_key)
 
+
+#copy of broadinstitute_psp.utils.lambda_utils.post_update_to_proteomics_clue
 def post_update_to_proteomics_clue(url_suffix, id, payload):
     API_key = os.environ["API_KEY"]
     API_URL = os.environ["API_URL"] + "/" + id + url_suffix
