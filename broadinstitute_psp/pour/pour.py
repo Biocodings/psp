@@ -32,20 +32,24 @@ def handler(event, context):
 
 
 def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
-    # current gct key
-    s3_dir = current_gct_key.rsplit("/", 2)[0] + "/level2"
+    """ EXPECTS current_gct_key format : 'psp/levelX/FILE_NAME
+                file_name format : 'PLATE_NAME_LVLX'
+    """
+    s3_dir = current_gct_key.split("/", 1)[0] + "/level2"
     gct_file_name = current_gct_key.rsplit("/", 1)[1]
 
-    plate_name = gct_file_name.rsplit("_", 3)[0]
-    plate_timestamp = gct_file_name.split(".")[0].split("_", 4)[4]
+    plate_name = gct_file_name.rsplit("_", 1)[0]
 
-    panorama_file_key = s3_dir + "/" + plate_name + "_" + plate_timestamp + ".json"
-    s3obj = s3.Object(bucket_name, panorama_file_key)
-    file = s3obj.get()['Body'].read()
+    panorama_file_key = s3_dir + "/" + plate_name  + ".json"
+    try:
+        s3obj = s3.Object(bucket_name, panorama_file_key)
+        file = s3obj.get()['Body'].read()
+    except Exception as error:
+        print "POUR error {} reading file_key {} from bucket {}".format(error, panorama_file_key, bucket_name)
+        raise Exception(error)
+
     panorama_json = json.loads(file)
-
     request_id = panorama_json["id"]
-
     return request_id
 
 
@@ -93,16 +97,14 @@ def download_gct_from_s3(s3, bucket_name, file_key, request_id):
     except botocore.exceptions.ClientError as e:
 
         if e.response['Error']['Code'] == "404":
-            pour_error_message = "POUR : The GCT located at {} from bucket {} does not exist".format(file_key,
-                                                                                                     bucket_name)
+            pour_error_message = "POUR : The GCT located at {} from bucket {} does not exist".format(file_key, bucket_name)
             print pour_error_message
             payload = {"status": pour_error_message}
             post_update_to_proteomics_clue(request_id, payload)
             raise
 
         else:
-            pour_error_message = "POUR : failed to download GCT located at {} from bucket {}".format(file_key,
-                                                                                                     bucket_name)
+            pour_error_message = "POUR : failed to download GCT located at {} from bucket {}".format(file_key, bucket_name)
             print pour_error_message
             payload = {"status": pour_error_message}
             post_update_to_proteomics_clue(request_id, payload)
@@ -110,7 +112,7 @@ def download_gct_from_s3(s3, bucket_name, file_key, request_id):
 
     return open_file
 
-#copy of broadinstitute_psp.utils.lambda_utils.post_update_to_proteomics_clue for use in lambda
+#copy of broadinstitute_psp.utils.lambda_utils.post_update_to_proteomics_clue for ease of use in lambda
 def post_update_to_proteomics_clue(id, payload):
     api_url = BASE_API_URL + "/" + id
 

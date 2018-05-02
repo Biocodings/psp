@@ -7,8 +7,9 @@ import broadinstitute_psp.dry.dry as dry
 
 
 FILE_EXTENSION = ".gct"
-LEVEL_3_GCT_NAME = "level3.gct"
-LEVEL_3_SUFFIX = "/level3"
+LOCAL_LEVEL_3_GCT_NAME = "level3.gct"
+LOCAL_LEVEL_2_GCT_NAME = "level2.gct"
+LEVEL_3_API_SUFFIX = "/level3"
 
 def build_parser():
     parser = argparse.ArgumentParser(
@@ -31,26 +32,24 @@ def build_parser():
     parser.add_argument("--plate_name", "-pn", required=True,
                         help="name of plate to be processed")
 
-    parser.add_argument("--plate_timestamp", "-pt", required=True,
-                        help="timestamp of plate used for naming")
 
     return parser
 
 def call_dry(args):
     s3 = boto3.resource('s3')
     config_path = args.config_dir + "/psp_production.cfg"
-    local_gct_path = args.config_dir + "/level2.gct"
+    local_gct_path = args.config_dir + "/" + LOCAL_LEVEL_2_GCT_NAME
 
     download_gct_from_s3(s3, args, local_gct_path)
 
-    dry_args = dry.build_parser().parse_args(["-i", local_gct_path, "-p", config_path, "-o", args.config_dir, "-og", LEVEL_3_GCT_NAME])
+    dry_args = dry.build_parser().parse_args(["-i", local_gct_path, "-p", config_path, "-o", args.config_dir, "-og", LOCAL_LEVEL_3_GCT_NAME])
     level_3_key = create_level_3_key(args)
     try:
         level_3_gct = dry.main(dry_args)
         print level_3_gct
 
         try:
-            gct_location = args.config_dir + "/" + LEVEL_3_GCT_NAME
+            gct_location = args.config_dir + "/" + LOCAL_LEVEL_3_GCT_NAME
             gct = open(gct_location, 'rb')
             s3.Bucket(args.bucket_name).put_object(Key=level_3_key, Body=gct)
 
@@ -58,19 +57,19 @@ def call_dry(args):
             level_3_message = "s3 upload error: {}".format(error)
             print level_3_message
             payload = {"s3": {"message": level_3_message}}
-            utils.post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
+            utils.post_update_to_proteomics_clue(LEVEL_3_API_SUFFIX, args.plate_api_id, payload)
             raise Exception(error)
 
     except Exception as error:
         level_3_message = error
         print level_3_message
         payload = {"s3": {"message": level_3_message}}
-        utils.post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
+        utils.post_update_to_proteomics_clue(LEVEL_3_API_SUFFIX, args.plate_api_id, payload)
         raise Exception(error)
 
     s3_url = "s3://" + args.bucket_name + "/" + level_3_key
     success_payload = {"s3": {"url": s3_url}}
-    utils.post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, success_payload)
+    utils.post_update_to_proteomics_clue(LEVEL_3_API_SUFFIX, args.plate_api_id, success_payload)
 
     dry_success_payload = {"status": "created LVL 3 GCT"}
     utils.post_update_to_proteomics_clue("", args.plate_api_id, dry_success_payload)
@@ -91,14 +90,14 @@ def download_gct_from_s3(s3, args, local_level_2_path):
             print level_3_message
 
         payload = {"s3": {"message": level_3_message}}
-        utils.post_update_to_proteomics_clue(LEVEL_3_SUFFIX, args.plate_api_id, payload)
+        utils.post_update_to_proteomics_clue(LEVEL_3_API_SUFFIX, args.plate_api_id, payload)
         raise Exception(e)
 
 def create_level_3_key(args):
+    filename = args.plate_name + "_LVL3" + FILE_EXTENSION
 
-    filename = args.plate_name + "_LVL3_" + args.plate_timestamp + FILE_EXTENSION
-    level_3_key = args.file_key.rsplit("/", 2)[0] + "/level3/" + filename
-
+    #split keeps only top level directory
+    level_3_key = args.file_key.split("/", 1)[0] + "/level3/" + filename
     return level_3_key
 
 if __name__ == "__main__":

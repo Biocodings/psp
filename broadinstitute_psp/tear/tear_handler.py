@@ -6,7 +6,8 @@ import broadinstitute_psp.utils.lambda_utils as utils
 import broadinstitute_psp.tear.tear as tear
 
 FILE_EXTENSION = ".gct"
-LEVEL_4_GCT_NAME = "level4.gct"
+LOCAL_LEVEL_4_GCT_NAME = "level4.gct"
+LOCAL_LEVEL_3_GCT_NAME = "level3.gct"
 LEVEL_4_SUFFIX = "/level4"
 
 def build_parser():
@@ -29,27 +30,23 @@ def build_parser():
 
     parser.add_argument("--plate_name", "-pn", required=True,
                         help="name of plate to be processed")
-
-    parser.add_argument("--plate_timestamp", "-pt", required=True,
-                        help="timestamp of plate used for naming")
-
     return parser
 
 def call_tear(args):
     s3 = boto3.resource('s3')
     config_path = args.config_dir + "/psp_production.cfg"
-    local_gct_path = args.config_dir + "/level4.gct"
+    local_gct_path = args.config_dir + "/" + LOCAL_LEVEL_3_GCT_NAME
 
     download_gct_from_s3(s3, args, local_gct_path)
 
-    tear_args = tear.build_parser().parse_args(["-i", local_gct_path, "-psp_config_path", config_path, "-o", LEVEL_4_GCT_NAME])
+    tear_args = tear.build_parser().parse_args(["-i", local_gct_path, "-psp_config_path", config_path, "-o", LOCAL_LEVEL_4_GCT_NAME])
     level_4_key = create_level_4_key(args)
     try:
         level_4_gct = tear.main(tear_args)
         print level_4_gct
 
         try:
-            gct_location = args.config_dir + "/" + LEVEL_4_GCT_NAME
+            gct_location = args.config_dir + "/" + LOCAL_LEVEL_4_GCT_NAME
             gct = open(gct_location, 'rb')
             s3.Bucket(args.bucket_name).put_object(Key=level_4_key, Body=gct)
 
@@ -95,9 +92,9 @@ def download_gct_from_s3(s3, args, local_level_3_path):
 
 def create_level_4_key(args):
 
-    filename = args.plate_name + "_LVL4_" + args.plate_timestamp + FILE_EXTENSION
-    level_4_key = args.file_key.rsplit("/", 2)[0] + "/level4/" + filename
-
+    filename = args.plate_name + "_LVL4" + FILE_EXTENSION
+    #split keeps only top level directory
+    level_4_key = args.file_key.split("/", 1)[0] + "/level4/" + filename
     return level_4_key
 
 
