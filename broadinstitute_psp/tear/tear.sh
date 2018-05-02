@@ -31,10 +31,6 @@ case $key in
     PLATE_NAME="$2"
     shift # past argument
     ;;
-    --plate_timestamp)
-    PLATE_TIMESTAMP="$2"
-    shift # past argument
-    ;;
     --default)
     DEFAULT=YES
     ;;
@@ -50,7 +46,6 @@ echo FILE_KEY     = "${FILE_KEY}"
 echo CONFIG_DIR   = "${CONFIG_DIR}"
 echo PLATE_API_ID = "${PLATE_API_ID}"
 echo PLATE_NAME   = "${PLATE_NAME}"
-echo PLATE_TIMESTAMP = "${PLATE_TIMESTAMP}"
 
 # Activate conda environment
 source activate psp
@@ -59,7 +54,7 @@ cd /cmap/psp
 
 python setup_psp.py develop
 
-python /cmap/psp/broadinstitute_psp/tear/tear_handler.py -b ${BUCKET_NAME} -key ${FILE_KEY} -dir ${CONFIG_DIR} -api ${PLATE_API_ID} -pn ${PLATE_NAME} -pt ${PLATE_TIMESTAMP}
+python /cmap/psp/broadinstitute_psp/tear/tear_handler.py -b ${BUCKET_NAME} -key ${FILE_KEY} -dir ${CONFIG_DIR} -api ${PLATE_API_ID} -pn ${PLATE_NAME}
 
 # Deactivate conda environment
 source deactivate
