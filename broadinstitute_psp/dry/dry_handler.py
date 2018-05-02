@@ -16,7 +16,7 @@ def build_parser():
         description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # Required arg
-    parser.add_argument("--bucket_name", "-b", rpost_update_to_proteomics_clueequired=True,
+    parser.add_argument("--bucket_name", "-b", required=True,
                         help="s3 bucket where level 2 GCT is located")
     # Required arg
     parser.add_argument("--file_key", "-key", required=True,
