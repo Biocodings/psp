@@ -43,8 +43,7 @@ def send_to_Batch(bucket_name, file_key, request_id, plate_name):
 
 
 def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
-    """ EXPECTS current_gct_key format : 's3://BUCKET/FILE_KEY'
-                file_key format : 'psp/levelX/FILE_NAME
+    """ EXPECTS current_gct_key format : 'psp/levelX/FILE_NAME
                 file_name format : 'PLATE_NAME_LVLX'
     """
 

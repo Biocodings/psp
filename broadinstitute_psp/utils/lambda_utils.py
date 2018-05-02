@@ -7,7 +7,14 @@ BASE_API_URL = os.environ["API_URL"]
 
 
 def post_update_to_proteomics_clue(url_suffix, id, payload):
-    api_url = BASE_API_URL + "/" + id + "/" + url_suffix
+    """
+
+    :param url_suffix: must include leading "/"
+    :param id: api entry id
+    :param payload: json to put to API
+
+    """
+    api_url = BASE_API_URL + "/" + id  + url_suffix
 
     headers = {'user_key': API_key}
 
