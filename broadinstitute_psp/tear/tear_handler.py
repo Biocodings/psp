@@ -35,19 +35,19 @@ def build_parser():
 def call_tear(args):
     s3 = boto3.resource('s3')
     config_path = args.config_dir + "/psp_production.cfg"
-    local_gct_path = args.config_dir + "/" + LOCAL_LEVEL_3_GCT_NAME
+    local_level_3_gct_path = args.config_dir + "/" + LOCAL_LEVEL_3_GCT_NAME
+    local_level_4_gct_path = args.config_dir + "/" + LOCAL_LEVEL_4_GCT_NAME
 
-    download_gct_from_s3(s3, args, local_gct_path)
+    download_gct_from_s3(s3, args, local_level_3_gct_path)
 
-    tear_args = tear.build_parser().parse_args(["-i", local_gct_path, "-psp_config_path", config_path, "-o", LOCAL_LEVEL_4_GCT_NAME])
+    tear_args = tear.build_parser().parse_args(["-i", local_level_3_gct_path, "-psp_config_path", config_path, "-o",local_level_4_gct_path , "-v"])
     level_4_key = create_level_4_key(args)
     try:
         level_4_gct = tear.main(tear_args)
         print level_4_gct
 
         try:
-            gct_location = args.config_dir + "/" + LOCAL_LEVEL_4_GCT_NAME
-            gct = open(gct_location, 'rb')
+            gct = open(local_level_4_gct_path, 'rb')
             s3.Bucket(args.bucket_name).put_object(Key=level_4_key, Body=gct)
 
         except boto3.exceptions.S3UploadFailedError as error:
