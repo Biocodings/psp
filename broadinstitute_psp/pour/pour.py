@@ -42,6 +42,7 @@ def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
 
     panorama_file_key = s3_dir + "/" + plate_name  + ".json"
     try:
+        print "Reading file_key {} from bucket {}".format(panorama_file_key, bucket_name)
         s3obj = s3.Object(bucket_name, panorama_file_key)
         file = s3obj.get()['Body'].read()
     except Exception as error:
