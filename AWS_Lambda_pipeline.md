@@ -18,7 +18,8 @@ respective handlers (`dry_handler` and `tear_handler`).
 ## Breakdown of Processing Steps
 ### Harvest
 `harvest.harvest_lambda` is triggered on POST to proteomics.clue.io/api/psp, it parses the POST request to download the Level2 GCT 
-from Panorama into the proteomics.clue.io bucket under the level 2 subdirectory, which is also where the POST JSON resides
+from Panorama into the proteomics.clue.io bucket under the level 2 subdirectory, which is also where the POST JSON resides.
+
 The upload of "*.gct" in the level 2 subdirectory triggers dry
 ### Dry
 `dry.launch_dry_batch` uses the name of the trigger file to get the original Panorama POST request, which it uses to instantiate a Batch job with the correct arguments. `dry_handler.py` is called by `dry.sh` and is responsible for calling `dry.py` and monitoring the output. If `dry.py` runs successfully, `dry_handler` updates the API status, and puts the resulting LVL3 GCT in the level 3 subdirectory on s3
