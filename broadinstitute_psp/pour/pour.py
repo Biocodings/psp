@@ -6,7 +6,8 @@ import requests
 
 API_key = os.environ["API_KEY"]
 BASE_API_URL = os.environ["API_URL"]
-
+PANORAMA_USER = os.environ["PANORAMA_USER"]
+PANORAMA_AUTH = os.environ["PANORAMA_AUTH"]
 
 def handler(event, context):
     print "inside lambda_utils.py handler"
@@ -71,10 +72,11 @@ def get_api_entry_from_proteomics_clue(id):
 
 
 def pour(s3, bucket_name, s3_location, panorama_location, request_id):
-    file_key = s3_location.split("/", 2)[2]
+    #expects s3_location format : "s3://BUCKET_NAME/KEY"
+    file_key = s3_location.split("/", 3)[3]
     file = download_gct_from_s3(s3, bucket_name, file_key, request_id)
     try:
-        r = requests.post(panorama_location, data=file)
+        r = requests.put(panorama_location, auth=(PANORAMA_USER,PANORAMA_AUTH), data=file)
         print r.text
         if r.ok:
             print "successfully uploaded {} to {}".format(file_key, panorama_location)
