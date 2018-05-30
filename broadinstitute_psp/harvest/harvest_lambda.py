@@ -1,4 +1,5 @@
 import boto3
+import botocore
 import urllib
 import json
 import requests
@@ -36,17 +37,19 @@ def harvest(panorama_request, bucket, key):
         try:
             s3.upload_fileobj(gct, Bucket=bucket, Key=s3key)
 
-        except boto3.exceptions.S3UploadFailedError as error:
+        except botocore.exceptions.ClientError as error:
             print "failed to upload to S3: " + error
             level_2_message = "s3 upload error: {}".format(error)
             payload = {"s3": {"message": level_2_message}}
             post_update_to_proteomics_clue("/level2", id, payload)
+            raise Exception(error)
 
     except Exception as error:
         print error
         level_2_message = "error: {}".format(error)
         payload = {"s3": {"message": level_2_message}}
         post_update_to_proteomics_clue("/level2", id, payload)
+        raise Exception(error)
 
     s3_url = "s3://" + bucket + "/" + s3key
     success_payload = {"s3": {"url": s3_url}}
@@ -76,7 +79,8 @@ def post_update_to_proteomics_clue(url_suffix, id, payload):
     print r.text
     if r.ok:
         print "successfully updated API at: {}".format(API_URL)
+        return True
     else:
         print "failed to update API at: {} with response: {}".format(API_URL, r.text)
-
+        return False
 
