@@ -8,7 +8,7 @@ import broadinstitute_psp.tear.tear as tear
 FILE_EXTENSION = ".gct"
 LOCAL_LEVEL_4_GCT_NAME = "level4.gct"
 LOCAL_LEVEL_3_GCT_NAME = "level3.gct"
-LEVEL_4_SUFFIX = "/level4"
+LEVEL_4_API_SUFFIX = "/level4"
 
 def build_parser():
     parser = argparse.ArgumentParser(
@@ -51,24 +51,24 @@ def call_tear(args):
             s3.Bucket(args.bucket_name).put_object(Key=level_4_key, Body=gct)
 
         except boto3.exceptions.S3UploadFailedError as error:
-            level_4_message = "s3 upload error: {}".format(error)
+            level_4_message = "s3 upload error"
             print level_4_message
             payload = {"s3": {"message": level_4_message}}
-            utils.post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
+            utils.post_update_to_proteomics_clue(LEVEL_4_API_SUFFIX, args.plate_api_id, payload)
             raise Exception(error)
 
     except Exception as error:
-        level_4_message = error
+        level_4_message = "tear error: {}".format(error)
         print level_4_message
         payload = {"s3": {"message": level_4_message}}
-        utils.post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
+        utils.post_update_to_proteomics_clue(LEVEL_4_API_SUFFIX, args.plate_api_id, payload)
         raise Exception(error)
 
     s3_url = "s3://" + args.bucket_name + "/" + level_4_key
     success_payload = {"s3": {"url": s3_url}}
-    utils.post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, success_payload)
+    utils.post_update_to_proteomics_clue(LEVEL_4_API_SUFFIX, args.plate_api_id, success_payload)
 
-    tear_success_payload = {"status": "created level 4 GCT"}
+    tear_success_payload = {"status": "created LVL 4 GCT"}
     utils.post_update_to_proteomics_clue("", args.plate_api_id, tear_success_payload)
 
 def download_gct_from_s3(s3, args, local_level_3_path):
@@ -87,7 +87,7 @@ def download_gct_from_s3(s3, args, local_level_3_path):
             print level_4_message
 
         payload = {"s3": {"message": level_4_message}}
-        utils.post_update_to_proteomics_clue(LEVEL_4_SUFFIX, args.plate_api_id, payload)
+        utils.post_update_to_proteomics_clue(LEVEL_4_API_SUFFIX, args.plate_api_id, payload)
         raise Exception(e)
 
 def create_level_4_key(args):

@@ -1,11 +1,6 @@
 import os
 import requests
 
-API_key = os.environ["API_KEY"]
-BASE_API_URL = os.environ["API_URL"]
-
-
-
 def post_update_to_proteomics_clue(url_suffix, id, payload):
     """
 
@@ -14,9 +9,12 @@ def post_update_to_proteomics_clue(url_suffix, id, payload):
     :param payload: json to put to API
 
     """
-    api_url = BASE_API_URL + "/" + id  + url_suffix
+    api_key = os.environ["API_KEY"]
+    base_api_url = os.environ["API_URL"]
 
-    headers = {'user_key': API_key}
+    api_url = base_api_url + "/" + id  + url_suffix
+
+    headers = {'user_key': api_key}
 
     r = requests.put(api_url,json=payload,headers=headers)
     print r.text
@@ -24,3 +22,4 @@ def post_update_to_proteomics_clue(url_suffix, id, payload):
         print "successfully updated API at: {}".format(api_url)
     else:
         print "failed to update API at: {} with response: {}".format(api_url, r.text)
+    return r

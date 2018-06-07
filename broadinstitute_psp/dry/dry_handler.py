@@ -7,7 +7,7 @@ import broadinstitute_psp.dry.dry as dry
 
 
 FILE_EXTENSION = ".gct"
-LOCAL_LEVEL_3_GCT_NAME = "level3.gct"
+LOCAL_LEVEL_3_GCT_NAME = "level2.dry.processed.gct"
 LOCAL_LEVEL_2_GCT_NAME = "level2.gct"
 LEVEL_3_API_SUFFIX = "/level3"
 
@@ -42,7 +42,7 @@ def call_dry(args):
 
     download_gct_from_s3(s3, args, local_gct_path)
 
-    dry_args = dry.build_parser().parse_args(["-i", local_gct_path, "-p", config_path, "-o", args.config_dir, "-og", LOCAL_LEVEL_3_GCT_NAME])
+    dry_args = dry.build_parser().parse_args(["-i", local_gct_path, "-p", config_path, "-o", args.config_dir])
     level_3_key = create_level_3_key(args)
     try:
         level_3_gct = dry.main(dry_args)
@@ -54,14 +54,14 @@ def call_dry(args):
             s3.Bucket(args.bucket_name).put_object(Key=level_3_key, Body=gct)
 
         except boto3.exceptions.S3UploadFailedError as error:
-            level_3_message = "s3 upload error: {}".format(error)
+            level_3_message = "s3 upload error"
             print level_3_message
             payload = {"s3": {"message": level_3_message}}
             utils.post_update_to_proteomics_clue(LEVEL_3_API_SUFFIX, args.plate_api_id, payload)
             raise Exception(error)
 
     except Exception as error:
-        level_3_message = error
+        level_3_message = "dry error: {}".format(error)
         print level_3_message
         payload = {"s3": {"message": level_3_message}}
         utils.post_update_to_proteomics_clue(LEVEL_3_API_SUFFIX, args.plate_api_id, payload)
