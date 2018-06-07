@@ -1,16 +1,14 @@
 import unittest
 import mock
-from botocore.exceptions import ClientError
+import boto3.exceptions
 import logging
 import broadinstitute_psp.harvest.harvest_lambda as h
 import broadinstitute_psp.utils.setup_logger as setup_logger
 
 logger = logging.getLogger(setup_logger.LOGGER_NAME)
 
-r = mock.MagicMock()
-r.ok = mock.Mock(return_value=True)
-r.text = mock.Mock(return_value="passed")
-h.requests.put = mock.Mock(return_value=r)
+
+h.requests.put = mock.Mock()
 
 # mock setup environment variables
 environDict = {"API_KEY": "API_KEY", "API_URL": "API_URL"}
@@ -43,79 +41,87 @@ class TestHarvestLambda(unittest.TestCase):
         return (req_id, name, panorama_request)
 
 
-    def test_handler(self):
-        pass
+    def test_read_panorama_request_from_s3(self):
+        args = TestHarvestLambda.setup_panorama_request()
+        s3 = mock.Mock()
+        h.boto3.resource = mock.Mock(return_value=s3)
+        s3.Object = mock.Mock(side_effect=Exception("failure"))
 
-    def test_harvest(self):
-        #test setup
+        # unhappy path, should raise exception, cannot post status update (no api id)
+        with self.assertRaises(Exception) as context:
+            h.read_panorama_request_from_s3("fake_bucket", "fake_file_key")
+        print context.exception
+
+        self.assertEqual("failure", context.exception[0][0])
+
+    def test_harvest_happy(self):
         (req_id, name, panorama_req) = TestHarvestLambda.setup_panorama_request()
-        h.boto3.client = mock.Mock()
+        s3 = mock.Mock()
+        s3.upload_fileobj = mock.Mock()
+        h.boto3.client = mock.Mock(return_value=s3)
         h.urllib.urlopen = mock.Mock()
         h.post_update_to_proteomics_clue = mock.Mock()
 
-        #unhappy url to panorama should call to urllib.urlopen, fail, and post failure to clue
-        h.urllib.urlopen.side_effect = Exception("failure")
+        # happy path, should post twice: s3 location of lvl2, status update
+        h.harvest(panorama_req, "fake_bucket", "psp/level2/fake_plate_name.json")
+        post_update_mock_calls = h.post_update_to_proteomics_clue.call_args_list
+        expected_calls = [mock.call("/level2", req_id, {"s3":{"url":"s3://fake_bucket/psp/level2/"+ name +"_LVL2.gct" }}),
+                          mock.call("", req_id, {"status":"created LVL2 GCT"})]
+        self.assertEqual(expected_calls, post_update_mock_calls)
 
+    def test_harvest_unhappy_urlopen(self):
+        #test setup
+        (req_id, name, panorama_req) = TestHarvestLambda.setup_panorama_request()
+        s3 = mock.Mock()
+        h.boto3.client = mock.Mock(return_value=s3)
+        h.urllib.urlopen = mock.Mock(side_effect=Exception("failure"))
+        h.post_update_to_proteomics_clue = mock.Mock()
+
+        #unhappy url to panorama should call to urllib.urlopen, fail, and post failure to clue
         with self.assertRaises(Exception) as context:
             h.harvest(panorama_req, "fake_bucket", "psp/level2/fake_panorama_key.json")
         self.assertEqual(str(context.exception), "failure")
-
         self.assertEqual(panorama_req["level 2"]["panorama"]["url"], h.urllib.urlopen.call_args[0][0])
 
         clue_post_args = h.post_update_to_proteomics_clue.call_args[0]
-        call_url = "API_URL/"+req_id + "/level2"
         self.assertEqual("/level2", clue_post_args[0], "unhappy path, urllib Exception, post to clue does not contain API URL suffix")
         self.assertEqual(req_id, clue_post_args[1], "unhappy path, urllib Exception, post to clue does not contain request id")
 
         error_message = "error: " + str(context.exception)
-        expected_payload = {'s3':{'message':error_message}}
+        expected_payload = { "s3" : { "message" : error_message } }
         self.assertEqual(expected_payload, clue_post_args[2], "unhappy path, urllib Exception, post to clue does not contain message" )
 
+    def test_harvest_unhappy_s3_upload(self):
+        #setup
+        (req_id, name, panorama_req) = TestHarvestLambda.setup_panorama_request()
+        s3 = mock.Mock()
+        s3.upload_fileobj = mock.Mock(side_effect=boto3.exceptions.S3UploadFailedError)
+        h.boto3.client = mock.Mock(return_value=s3)
+        h.urllib.urlopen = mock.Mock()
+        h.post_update_to_proteomics_clue = mock.Mock()
+
         #unhappy s3 upload should post "s3 upload error"
-        h.urllib.urlopen.side_effect = None
-        h.urllib.urlopen.return_value = True
-        h.s3 = mock.Mock()
-        h.s3.upload_fileobj = mock.Mock()
-        h.s3.upload_fileobj.side_effect= Exception(ClientError)
-        h.post_update_to_proteomics_clue.reset_mock()
-
-
-        with self.assertRaises(ClientError) as context:
+        with self.assertRaises(Exception) as context:
             h.harvest(panorama_req, "fake_bucket", "psp/level2/fake_panorama_key.json")
-        # self.assertEqual()
-        print str(context.exception)
+        self.assertEqual(boto3.exceptions.S3UploadFailedError, type(context.exception[0]))
+        h.post_update_to_proteomics_clue.assert_called_once()
 
-        clue_post_args = h.post_update_to_proteomics_clue.call_args[0]
+        post_update_mock_call = h.post_update_to_proteomics_clue.call_args
+        expected_call = mock.call("/level2", req_id, {"s3":{"message":"s3 upload error: "}})
 
-        self.assertEqual("/level2", clue_post_args[0], "unhappy path, s3 upload Exception, post to clue does not contain API url suffix")
-        self.assertEqual(req_id, clue_post_args[1], "unhappy path, s3 upload Exception, post to clue does not contain request id")
-
+        self.assertEqual(expected_call, post_update_mock_call)
 
     def test_extract_data_from_panorama_request(self):
+        #setup
         (req_id, name, panorama_req) = TestHarvestLambda.setup_panorama_request()
-
         key = "psp/level2/request.json"
 
         (request_id, aws_key) = h.extract_data_from_panorama_request(panorama_request=panorama_req, key=key)
 
         self.assertEqual(req_id, request_id)
-        self.assertEqual(aws_key, "psp/level2/"+name+"_LVL2"+h.FILE_EXTENSION)
+        self.assertEqual(aws_key, "psp/level2/" + name + "_LVL2" + h.FILE_EXTENSION)
 
-
-    def test_post_update_to_proteomics_clue(self):
-        (req_id , _ , _)= TestHarvestLambda.setup_panorama_request()
-
-        payload = {"status": "test successfully updated API"}
-        r = h.post_update_to_proteomics_clue("", req_id, payload)
-        args, kwargs =  h.requests.put.call_args
-        # print args, kwargs
-
-        call_url = "API_URL/"+req_id
-        self.assertEqual(call_url, args[0], "post to clue does not contain API URL to panorama req")
-
-        self.assertEqual({'user_key':'API_KEY'}, kwargs['headers'], "post to clue does not contain headers")
-        self.assertEqual(payload, kwargs['json'], "post to clue does not contain payload")
-
+    ## post_update_to_proteomics_clue not explicitly tested here, see utils.lambda_utils
 
 if __name__ == "__main__":
     setup_logger.setup(verbose=True)
