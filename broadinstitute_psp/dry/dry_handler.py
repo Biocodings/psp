@@ -42,7 +42,7 @@ def call_dry(args):
 
     download_gct_from_s3(s3, args, local_gct_path)
 
-    dry_args = dry.build_parser().parse_args(["-i", local_gct_path, "-p", config_path, "-o", args.config_dir])
+    dry_args = dry.build_parser().parse_args(["-i", local_gct_path, "-p", config_path, "-o", args.config_dir, "-ob", LOCAL_LEVEL_3_GCT_NAME])
     level_3_key = create_level_3_key(args)
     try:
         level_3_gct = dry.main(dry_args)
