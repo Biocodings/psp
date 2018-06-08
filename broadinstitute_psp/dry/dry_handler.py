@@ -7,7 +7,8 @@ import broadinstitute_psp.dry.dry as dry
 
 
 FILE_EXTENSION = ".gct"
-LOCAL_LEVEL_3_GCT_NAME = "level2.dry.processed.gct"
+LOCAL_LEVEL_3_GCT_NAME = "level3"
+DRY_OUT_NAME = LOCAL_LEVEL_3_GCT_NAME + dry.DEFAULT_GCT_SUFFIX
 LOCAL_LEVEL_2_GCT_NAME = "level2.gct"
 LEVEL_3_API_SUFFIX = "/level3"
 
@@ -49,7 +50,7 @@ def call_dry(args):
         print level_3_gct
 
         try:
-            gct_location = args.config_dir + "/" + LOCAL_LEVEL_3_GCT_NAME
+            gct_location = args.config_dir + "/" + DRY_OUT_NAME
             gct = open(gct_location, 'rb')
             s3.Bucket(args.bucket_name).put_object(Key=level_3_key, Body=gct)
 
