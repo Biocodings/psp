@@ -8,7 +8,11 @@ import os
 FILE_EXTENSION = ".gct"
 
 def handler(event, context):
-    print "inside lambda_handler"
+    """ Function called by lambda upon put of *.json in /psp/level2 bucket
+    Reads panorama request in, pulls level2 GCT from panorama using link
+    location provided to API, and saves GCT to /psp/level2 bucket
+    """
+
     bucket_name = event['Records'][0]['s3']['bucket']['name']
     file_key = event['Records'][0]['s3']['object']['key']
 
@@ -17,7 +21,12 @@ def handler(event, context):
 
     harvest(panorama_request, bucket_name, file_key)
 
+
 def read_panorama_request_from_s3(bucket_name, file_key):
+    """ Reads panorama request from s3, loads JSON,
+    and returns request object
+    """
+
     s3 = boto3.resource('s3')
     try:
         print 'Reading file {} from bucket {}'.format(file_key, bucket_name)
@@ -30,13 +39,25 @@ def read_panorama_request_from_s3(bucket_name, file_key):
     panorama_request = json.loads(file_content)
     return panorama_request
 
+
 def harvest(panorama_request, bucket, key):
+    """ Reads url location of level2 GCT, opens url, and uploads file
+    to s3
+
+    Args -
+        panorama_request (JSON object) - request posted from panorama
+        bucket (string) - bucket location on s3 to upload GCT
+        key (string)  - key location on s3 to upload GCT
+
+    """
     print "inside Harvest"
     s3 = boto3.client('s3')
     panorama_url = panorama_request["level 2"]["panorama"]["url"]
 
+    # Obtain request id for updating API and create level2 GCT key
     (id, s3key) = extract_data_from_panorama_request(panorama_request, key)
 
+    # Read GCT on Panorama
     try:
         gct = urllib.urlopen(panorama_url)
 
@@ -47,6 +68,7 @@ def harvest(panorama_request, bucket, key):
         post_update_to_proteomics_clue("/level2", id, payload)
         raise Exception(error)
 
+    # Upload GCT to s3
     try:
         s3.upload_fileobj(gct, Bucket=bucket, Key=s3key)
 
@@ -57,27 +79,38 @@ def harvest(panorama_request, bucket, key):
         post_update_to_proteomics_clue("/level2", id, payload)
         raise Exception(error)
 
+    # Update /psp API with s3 location of level2 GCT
     s3_url = "s3://" + bucket + "/" + s3key
     success_payload = {"s3": {"url": s3_url}}
     post_update_to_proteomics_clue("/level2", id, success_payload)
 
+    # Update /psp API with success status
     harvest_success_payload = {"status": "created LVL2 GCT"}
     post_update_to_proteomics_clue("", id, harvest_success_payload)
 
 
-
 def extract_data_from_panorama_request(panorama_request, key):
-    plate_name = panorama_request["name"]
+    """ Extract API id from panorama request JSON object for updates
+    and create s3 key for level2 GCT on panorama based on provided name and
+    current s3 key
+    """
 
+    plate_name = panorama_request["name"]
     filename = plate_name + "_LVL2" + FILE_EXTENSION
-    #new key keeps directory location
+
+    # Create key for level2 GCT, keeping main directory location
     new_key = key.rsplit("/", 1)[0] + "/" + filename
     request_id = panorama_request["id"]
+
     return (request_id, new_key)
 
 
-#copy of broadinstitute_psp.utils.lambda_utils.post_update_to_proteomics_clue
 def post_update_to_proteomics_clue(url_suffix, id, payload):
+    """ Copy of broadinstitute_psp.utils.lambda_utils.post_update_to_proteomics_clue
+    This is copied to avoid having full psp repo inside of zipped harvest function
+    uploaded to Amazon lambda.
+    """
+
     API_key = os.environ["API_KEY"]
     API_URL = os.environ["API_URL"] + "/" + id  + url_suffix
 

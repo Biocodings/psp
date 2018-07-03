@@ -2,11 +2,12 @@ import os
 import requests
 
 def post_update_to_proteomics_clue(url_suffix, id, payload):
-    """
+    """ Posts update to CLUE API /psp
 
-    :param url_suffix: must include leading "/"
-    :param id: api entry id
-    :param payload: json to put to API
+    Args:
+        url_suffix (string) must include leading "/"
+        id (string) API entry id
+        payload (JSON) update to put to API
 
     """
     api_key = os.environ["API_KEY"]
