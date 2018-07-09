@@ -4,18 +4,27 @@ import json
 import os
 import requests
 
-API_key = os.environ["API_KEY"]
+API_KEY = os.environ["API_KEY"]
 BASE_API_URL = os.environ["API_URL"]
 PANORAMA_USER = os.environ["PANORAMA_USER"]
 PANORAMA_AUTH = os.environ["PANORAMA_AUTH"]
 
 def handler(event, context):
-    print "inside lambda_utils.py handler"
+    """ Function called by lambda upon put of *.gct in /psp/level4 bucket
+    Uses event file_key to get panorama request from /psp/level2, and then
+    calls the API with the request id to get full entry which contains locations
+    of all psp-processed GCTs on s3 and where to put them on Panorama.
+    For level 3 and level 4 GCTs, pulls down from s3 and puts them to
+    Panorama at the specified locations. Updates /psp API status.
+    """
+
     s3 = boto3.resource('s3')
     bucket_name = event['Records'][0]['s3']['bucket']['name']
     file_key = event['Records'][0]['s3']['object']['key']
+
     request_id = get_panorama_request_and_parse(s3, bucket_name, file_key)
     api_entry = get_api_entry_from_proteomics_clue(request_id)
+
     if api_entry is not None:
         levels = ["level 3", "level 4"]
         for level in levels:
@@ -24,6 +33,7 @@ def handler(event, context):
             pour(s3, bucket_name, s3_location, panorama_location, request_id)
     else:
         pour_error_message = "POUR : failed to get API entry for {}".format(request_id)
+        print pour_error_message
         post_update_to_proteomics_clue(request_id, pour_error_message)
 
     pour_success_message = "POUR : succeeded in uploading all GCTs to Panorama"
@@ -33,8 +43,17 @@ def handler(event, context):
 
 
 def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
-    """ EXPECTS current_gct_key format : 'psp/levelX/FILE_NAME
-                file_name format : 'PLATE_NAME_LVLX'
+    """ Read panorama request from s3 to get request id for API entry
+
+    Args:
+        s3 (resource)
+        bucket_name (string) s3 bucket location of panorama JSON
+        current_gct_key (string) s3 key to panorama JSON
+            - key format : 'psp/levelX/FILE_NAME'
+            - file_name format : 'PLATE_NAME_LVLX'
+
+    Returns:
+        request_id (string)
     """
     s3_dir = current_gct_key.split("/", 1)[0] + "/level2"
     gct_file_name = current_gct_key.rsplit("/", 1)[1]
@@ -56,9 +75,12 @@ def get_panorama_request_and_parse(s3, bucket_name, current_gct_key):
 
 
 def get_api_entry_from_proteomics_clue(id):
+    """ Call /psp API with id to get full entry
+
+    """
     api_url = BASE_API_URL + "/" + id
 
-    headers = {'user_key': API_key}
+    headers = {'user_key': API_KEY}
 
     r = requests.get(api_url, headers=headers)
     print r.text
@@ -72,7 +94,17 @@ def get_api_entry_from_proteomics_clue(id):
 
 
 def pour(s3, bucket_name, s3_location, panorama_location, request_id):
-    #expects s3_location format : "s3://BUCKET_NAME/KEY"
+    """ Extract s3 file key from saved s3_location, download the GCT, and put
+    to Panorama at the given panorama_location and update API status
+
+    Args:
+        s3 (resource)
+        bucket_name (string) - s3 bucket location
+        s3_location (url) - full location on s3 ex:  "s3://BUCKET_NAME/KEY"
+        panorama_location (url) - location on Panorama to put GCT
+        request_id (string) - /psp API id for status update
+    """
+    #TODO: make this more clear
     file_key = s3_location.split("/", 3)[3]
     file = download_gct_from_s3(s3, bucket_name, file_key, request_id)
     try:
@@ -92,6 +124,8 @@ def pour(s3, bucket_name, s3_location, panorama_location, request_id):
 
 
 def download_gct_from_s3(s3, bucket_name, file_key, request_id):
+    """ Download GCT from s3; update /psp API upon error
+    """
     try:
         print 'Reading file {} from bucket {}'.format(file_key, bucket_name)
         file = s3.Object(bucket_name, file_key)
@@ -115,11 +149,15 @@ def download_gct_from_s3(s3, bucket_name, file_key, request_id):
 
     return open_file
 
-#copy of broadinstitute_psp.utils.lambda_utils.post_update_to_proteomics_clue for ease of use in lambda
 def post_update_to_proteomics_clue(id, payload):
+    """ Copy of broadinstitute_psp.utils.lambda_utils.post_update_to_proteomics_clue
+    This is copied to avoid having full psp repo inside of zipped pour function
+    uploaded to Amazon lambda
+    """
+
     api_url = BASE_API_URL + "/" + id
 
-    headers = {'user_key': API_key}
+    headers = {'user_key': API_KEY}
 
     r = requests.put(api_url, json=payload, headers=headers)
     print r.text

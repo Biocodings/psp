@@ -19,7 +19,7 @@ def build_parser():
 
     # Required args
     parser.add_argument("--list_of_gcts", "-l", nargs="+", required=True,
-                        help="space separated filepaths to 1+ input gcts")
+                        help="space separated filepaths to 1+ input GCTs")
 
     parser.add_argument("--metadata_field", "-m", default="det_well_enrichment_score",
                         help="name of metadata field to plot on x axis")
