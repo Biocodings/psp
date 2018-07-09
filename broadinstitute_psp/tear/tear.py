@@ -20,7 +20,7 @@ import sys
 
 import broadinstitute_psp.utils.setup_logger as setup_logger
 import broadinstitute_psp.utils.psp_utils as psp_utils
-import broadinstitute_psp.dry.dry as dry
+import broadinstitute_psp.tear.continuous_renormalization as c
 import cmapPy.pandasGEXpress.GCToo as GCToo
 import cmapPy.pandasGEXpress.write_gct as wg
 
@@ -87,6 +87,10 @@ def main(args):
         out_gct.col_metadata_df, prov_code,
         config_metadata["prov_code_delimiter"],
         config_metadata["prov_code_field"])
+
+    # Apply continuous renormalization to GCT
+    continuous_renormalization_args = c.build_parser(["--in_gct", out_gct])
+    out_gct = c.continuous_renormalization(continuous_renormalization_args)
 
     # Write output gct
     write_output_gct(out_gct, out_gct_name, config_io["data_null"], config_io["filler_null"])
